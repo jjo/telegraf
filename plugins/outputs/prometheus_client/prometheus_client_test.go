@@ -57,8 +57,8 @@ func testPrometheusTagsFields(t *testing.T, pTesting *PrometheusClient, p *prome
 	var acc testutil.Accumulator
 	require.NoError(t, p.Gather(&acc))
 	for _, e := range expected {
-		acc.AssertContainsFields(t, "prometheus_"+e.name,
-		map[string]interface{}{"value": e.value})
+		acc.AssertContainsTaggedFields(t, "prometheus_"+e.name,
+		map[string]interface{}{"value": e.value}, e.tags)
 	}
 }
 
@@ -67,11 +67,11 @@ func testPrometheusWritePointEmptyTag(t *testing.T, pTesting *PrometheusClient, 
 	pt1, _ := telegraf.NewMetric(
 		"test_point_1",
 		tags,
-		map[string]interface{}{"value": 0.0})
+		map[string]interface{}{"f1": 0.0})
 	pt2, _ := telegraf.NewMetric(
 		"test_point_2",
 		tags,
-		map[string]interface{}{"value": 1.0})
+		map[string]interface{}{"f2": 1.0})
 	var metrics = []telegraf.Metric{
 		pt1,
 		pt2,
@@ -83,16 +83,16 @@ func testPrometheusWritePointEmptyTag(t *testing.T, pTesting *PrometheusClient, 
 		value float64
 		tags  map[string]string
 	}{
-		{"test_point_1_value", 0.0, tags},
-		{"test_point_2_value", 1.0, tags},
+		{"test_point_1_f1", 0.0, tags},
+		{"test_point_2_f2", 1.0, tags},
 	}
 
 	var acc testutil.Accumulator
 
 	require.NoError(t, p.Gather(&acc))
 	for _, e := range expected {
-		acc.AssertContainsFields(t, "prometheus_"+e.name,
-			map[string]interface{}{"value": e.value})
+		acc.AssertContainsTaggedFields(t, "prometheus_"+e.name,
+			map[string]interface{}{"value": e.value}, e.tags)
 	}
 
 	tags = make(map[string]string)
@@ -100,11 +100,11 @@ func testPrometheusWritePointEmptyTag(t *testing.T, pTesting *PrometheusClient, 
 	pt3, _ := telegraf.NewMetric(
 		"test_point_3",
 		tags,
-		map[string]interface{}{"value": 0.0})
+		map[string]interface{}{"f3": 0.0})
 	pt4, _ := telegraf.NewMetric(
 		"test_point_4",
 		tags,
-		map[string]interface{}{"value": 1.0})
+		map[string]interface{}{"f4": 1.0})
 	metrics = []telegraf.Metric{
 		pt3,
 		pt4,
@@ -115,8 +115,8 @@ func testPrometheusWritePointEmptyTag(t *testing.T, pTesting *PrometheusClient, 
 		name  string
 		value float64
 	}{
-		{"test_point_3_value", 0.0},
-		{"test_point_4_value", 1.0},
+		{"test_point_3_f3", 0.0},
+		{"test_point_4_f4", 1.0},
 	}
 
 	require.NoError(t, p.Gather(&acc))
