@@ -65,31 +65,27 @@ func (p *PrometheusClient) Write(metrics []telegraf.Metric) error {
 
 	for _, point := range metrics {
 		var labels []string
-		key := point.Name()
+		l := prometheus.Labels{}
+		for tk, tv := range point.Tags() {
+			if len(tk) > 0 {
+				labels = append(labels, tk)
+				l[tk] = tv
+			}
+		}
+		t_key := point.Name()
 
 		for fname, val := range point.Fields() {
-			for k, _ := range point.Tags() {
-				if len(k) > 0 {
-					labels = append(labels, k)
-				}
-			}
-			labels = append(labels, "field")
+			key := t_key + "_" + fname
 			if _, ok := p.metrics[key]; !ok {
 				p.metrics[key] = prometheus.NewUntypedVec(
 					prometheus.UntypedOpts{
 						Name: key,
-						Help: fmt.Sprintf("Telegraf collected point '%s'", key),
+						Help: fmt.Sprintf("Telegraf collected point key: '%s' field: '%s'", t_key, fname),
 					},
 					labels,
 				)
 				prometheus.MustRegister(p.metrics[key])
 			}
-
-			l := prometheus.Labels{}
-			for tk, tv := range point.Tags() {
-				l[tk] = tv
-			}
-			l["field"] = fname
 
 			switch val := val.(type) {
 			default:
