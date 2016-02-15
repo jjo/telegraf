@@ -67,29 +67,30 @@ func (p *PrometheusClient) Write(metrics []telegraf.Metric) error {
 		var labels []string
 		key := point.Name()
 
-		for k, _ := range point.Tags() {
-			if len(k) > 0 {
-				labels = append(labels, k)
+		for fname, val := range point.Fields() {
+			for k, _ := range point.Tags() {
+				if len(k) > 0 {
+					labels = append(labels, k)
+				}
 			}
-		}
+			labels = append(labels, "field")
+			if _, ok := p.metrics[key]; !ok {
+				p.metrics[key] = prometheus.NewUntypedVec(
+					prometheus.UntypedOpts{
+						Name: key,
+						Help: fmt.Sprintf("Telegraf collected point '%s'", key),
+					},
+					labels,
+				)
+				prometheus.MustRegister(p.metrics[key])
+			}
 
-		if _, ok := p.metrics[key]; !ok {
-			p.metrics[key] = prometheus.NewUntypedVec(
-				prometheus.UntypedOpts{
-					Name: key,
-					Help: fmt.Sprintf("Telegraf collected point '%s'", key),
-				},
-				labels,
-			)
-			prometheus.MustRegister(p.metrics[key])
-		}
+			l := prometheus.Labels{}
+			for tk, tv := range point.Tags() {
+				l[tk] = tv
+			}
+			l["field"] = fname
 
-		l := prometheus.Labels{}
-		for tk, tv := range point.Tags() {
-			l[tk] = tv
-		}
-
-		for _, val := range point.Fields() {
 			switch val := val.(type) {
 			default:
 				log.Printf("Prometheus output, unsupported type. key: %s, type: %T\n",
@@ -98,8 +99,8 @@ func (p *PrometheusClient) Write(metrics []telegraf.Metric) error {
 				m, err := p.metrics[key].GetMetricWith(l)
 				if err != nil {
 					log.Printf("ERROR Getting metric in Prometheus output, "+
-						"key: %s, labels: %v,\nerr: %s\n",
-						key, l, err.Error())
+						"key: %s, labels: %v, field: %s,\nerr: %s\n",
+						key, l, fname, err.Error())
 					continue
 				}
 				m.Set(float64(val))
@@ -107,8 +108,8 @@ func (p *PrometheusClient) Write(metrics []telegraf.Metric) error {
 				m, err := p.metrics[key].GetMetricWith(l)
 				if err != nil {
 					log.Printf("ERROR Getting metric in Prometheus output, "+
-						"key: %s, labels: %v,\nerr: %s\n",
-						key, l, err.Error())
+						"key: %s, labels: %v, field: %s\nerr: %s\n",
+						key, l, fname, err.Error())
 					continue
 				}
 				m.Set(val)
